@@ -77,8 +77,8 @@ export class UIManager {
         this.roleDisplay.className = gameState.role === DRIVER ? 'text-red-600' : 'text-green-600';
         this.cashDisplay.textContent = `KSh ${Math.round(gameState.cash)}`;
         this.fuelDisplay.textContent = `${Math.round(gameState.fuel)}%`;
-        // Convert speed magnitude to km/h for display
-        this.speedDisplay.textContent = `${(Math.abs(gameState.speed) * 1000).toFixed(1)} km/h`; 
+        // Speed in m/s -> km/h
+        this.speedDisplay.textContent = `${(Math.abs(gameState.speed) * 3.6).toFixed(1)} km/h`; 
         
         this.destinationDisplay.textContent = gameState.currentDestination ? gameState.currentDestination.name : 'N/A';
         this.passengerCountDisplay.textContent = `${gameState.passengers}/${gameState.maxPassengers}`;

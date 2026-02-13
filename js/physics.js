@@ -1,10 +1,22 @@
-// import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'; // REMOVED
+/**
+ * Realistic vehicle physics: bicycle model, steering angle, drag, proper braking.
+ * All units: meters, seconds, m/s. gameState.speed = forward velocity (m/s).
+ */
 import { gameState, DRIVER, CONDUCTOR, matatuMesh, keyState, touchControl, GROUND_LEVEL, MATATU_HEIGHT, stopRoute } from './game.js';
 
-const MIN_SPEED_THRESHOLD = 0.0001; 
-const BRAKE_FORCE = 0.005; 
-const DRAG_FACTOR = 0.0005; 
-const FUEL_CONSUMPTION_RATE = 0.05;
+// Vehicle dynamics (realistic minibus)
+const WHEELBASE = 5;              // meters (distance between axles)
+const MAX_STEER_ANGLE = 0.55;     // rad ~31°
+const STEER_RATE = 2.2;           // rad/s (how fast steering wheel turns)
+const ACCELERATION = 2.8;         // m/s²
+const BRAKE_DECEL = 7;            // m/s²
+const MAX_SPEED_MS = 15;          // ~54 km/h
+const REVERSE_MAX = 3;            // m/s reverse
+const DRAG_COEFF = 0.35;          // air resistance factor
+const ROLLING_FRICTION = 0.02;   // constant decel when no throttle
+const MIN_SPEED = 0.01;
+
+const FUEL_CONSUMPTION_RATE = 0.03;
 
 export class Physics {
     constructor(gameState, matatuMesh, keyState, touchControl) {
@@ -12,99 +24,77 @@ export class Physics {
         this.matatuMesh = matatuMesh;
         this.keyState = keyState;
         this.touchControl = touchControl;
+        // Steering angle in radians (current wheel angle)
+        this.steeringAngle = 0;
     }
 
     consumeFuel() {
-        this.gameState.fuel = Math.max(0, this.gameState.fuel - FUEL_CONSUMPTION_RATE); 
+        const rate = FUEL_CONSUMPTION_RATE * (1 + Math.abs(this.gameState.speed) / MAX_SPEED_MS);
+        this.gameState.fuel = Math.max(0, this.gameState.fuel - rate);
         if (this.gameState.fuel <= 0 && this.gameState.isDriving) {
             stopRoute();
         }
     }
 
-    driveUpdate(currentRole) {
+    driveUpdate(currentRole, deltaTime) {
         if (this.gameState.fuel <= 0 || this.gameState.isModalOpen) {
             this.gameState.speed = 0;
+            this.steeringAngle = 0;
             if (this.gameState.fuel <= 0) stopRoute();
-            return; 
-        }
-        
-        // --- 1. Apply Resistance and Friction ---
-        const speedSign = Math.sign(this.gameState.speed);
-        const currentSpeedAbs = Math.abs(this.gameState.speed);
-        
-        if (currentSpeedAbs > MIN_SPEED_THRESHOLD) {
-            const dragLoss = DRAG_FACTOR * currentSpeedAbs;
-            const frictionLoss = this.gameState.friction;
-            const totalLoss = dragLoss + frictionLoss;
-            
-            this.gameState.speed = (currentSpeedAbs - totalLoss) * speedSign;
-
-            if (Math.sign(this.gameState.speed) !== speedSign) {
-                this.gameState.speed = 0;
-            }
-        } else {
-            this.gameState.speed = 0; 
-        }
-        
-        // --- 2. Handle Movement Logic ---
-        if (currentRole === DRIVER) {
-            this.handlePlayerInput(currentSpeedAbs);
-        }
-        
-        // --- 3. Apply Movement to Matatu Mesh ---
-        if (Math.abs(this.gameState.speed) > MIN_SPEED_THRESHOLD) {
-            const direction = new THREE.Vector3(0, 0, 1); // THREE is now globally available
-            direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.matatuMesh.rotation.y);
-            
-            this.matatuMesh.position.x += direction.x * this.gameState.speed;
-            this.matatuMesh.position.z -= direction.z * this.gameState.speed; 
+            return;
         }
 
-        this.matatuMesh.position.y = GROUND_LEVEL + (MATATU_HEIGHT / 2); 
-        
-        this.gameState.isDriving = (Math.abs(this.gameState.speed) > MIN_SPEED_THRESHOLD);
-    }
-    
-    handlePlayerInput(currentSpeedAbs) {
-        const isAccelerating = this.keyState['w'] || this.keyState['W'] || this.keyState['ArrowUp'] || this.touchControl.forward;
-        const isBraking = this.keyState['s'] || this.keyState['S'] || this.keyState['ArrowDown'];
+        const dt = Math.min(deltaTime, 0.1);
+        let speed = this.gameState.speed;
+
+        // --- 1. Steering input (accumulate steering angle) ---
         const isTurningLeft = this.keyState['a'] || this.keyState['A'] || this.keyState['ArrowLeft'] || this.touchControl.left;
         const isTurningRight = this.keyState['d'] || this.keyState['D'] || this.keyState['ArrowRight'] || this.touchControl.right;
-        
-        // Acceleration
-        if (isAccelerating) {
-            this.gameState.speed = Math.min(this.gameState.maxSpeed * 1.5, this.gameState.speed + this.gameState.acceleration); 
-        } 
-        
-        // Braking 
-        if (isBraking) {
-            if (this.gameState.speed > 0) {
-                 this.gameState.speed = Math.max(0, this.gameState.speed - BRAKE_FORCE); 
-            } else if (this.gameState.speed < 0) {
-                 this.gameState.speed = Math.min(0, this.gameState.speed + BRAKE_FORCE); 
-            }
-        } else if (currentSpeedAbs < MIN_SPEED_THRESHOLD) {
-            // Allow reverse only if stopped
-            if (isBraking) { 
-                 this.gameState.speed = Math.max(-this.gameState.maxSpeed / 2, this.gameState.speed - this.gameState.acceleration); 
+        if (currentRole === DRIVER) {
+            if (isTurningLeft) this.steeringAngle = Math.max(-MAX_STEER_ANGLE, this.steeringAngle - STEER_RATE * dt);
+            else if (isTurningRight) this.steeringAngle = Math.min(MAX_STEER_ANGLE, this.steeringAngle + STEER_RATE * dt);
+            else this.steeringAngle *= 0.92; // return to center
+        }
+
+        // --- 2. Acceleration / Brake (only when driver) ---
+        if (currentRole === DRIVER) {
+            const isAccelerating = this.keyState['w'] || this.keyState['W'] || this.keyState['ArrowUp'] || this.touchControl.forward;
+            const isBraking = this.keyState['s'] || this.keyState['S'] || this.keyState['ArrowDown'];
+
+            if (isBraking) {
+                if (speed > 0) speed = Math.max(0, speed - BRAKE_DECEL * dt);
+                else if (speed < 0) speed = Math.min(0, speed + BRAKE_DECEL * dt);
+                else speed = Math.max(-REVERSE_MAX, speed - ACCELERATION * 0.5 * dt);
+            } else if (isAccelerating) {
+                if (speed >= 0) speed = Math.min(MAX_SPEED_MS, speed + ACCELERATION * dt);
+                else speed = Math.min(0, speed + BRAKE_DECEL * dt); // brake out of reverse
+            } else {
+                // Rolling friction + drag
+                const drag = DRAG_COEFF * speed * speed * 0.01;
+                const roll = ROLLING_FRICTION * (speed > 0 ? 1 : -1);
+                speed -= (drag + roll) * dt;
+                if (Math.abs(speed) < MIN_SPEED) speed = 0;
             }
         }
 
-        // Turning (Only if moving and stable)
-        if (currentSpeedAbs > MIN_SPEED_THRESHOLD) { 
-            const speedRatio = Math.min(1.0, currentSpeedAbs / (this.gameState.maxSpeed * 1.5)); 
-            const steeringScale = 1.0 - (0.7 * speedRatio); 
-            
-            const effectiveRotationSpeed = this.gameState.rotationSpeed * steeringScale;
-            
-            const turnFactor = Math.sign(this.gameState.speed) * effectiveRotationSpeed; 
+        this.gameState.speed = speed;
 
-            if (isTurningLeft) {
-                this.matatuMesh.rotation.y += turnFactor;
-            }
-            if (isTurningRight) {
-                this.matatuMesh.rotation.y -= turnFactor;
-            }
+        // --- 3. Apply turning (bicycle model: omega = v * tan(steer) / L) ---
+        const absSpeed = Math.abs(speed);
+        if (absSpeed > MIN_SPEED) {
+            const turnRate = (speed / WHEELBASE) * Math.tan(this.steeringAngle);
+            this.matatuMesh.rotation.y -= turnRate * dt;
         }
+
+        // --- 4. Move forward along heading ---
+        if (absSpeed > MIN_SPEED) {
+            const dir = new THREE.Vector3(0, 0, 1);
+            dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.matatuMesh.rotation.y);
+            this.matatuMesh.position.x += dir.x * speed * dt;
+            this.matatuMesh.position.z += dir.z * speed * dt;
+        }
+
+        this.matatuMesh.position.y = GROUND_LEVEL + MATATU_HEIGHT / 2;
+        this.gameState.isDriving = absSpeed > MIN_SPEED;
     }
 }

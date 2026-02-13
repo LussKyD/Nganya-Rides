@@ -1,9 +1,10 @@
-// import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'; // REMOVED
 import { DRIVER } from './game.js';
+import { isInIntersection } from './roads.js';
 
-const TRAFFIC_LIGHT_CYCLE = 10000; // 10 seconds per cycle segment (Green, Yellow, Red)
-const VIOLATION_CHANCE = 0.4; 
+const TRAFFIC_LIGHT_CYCLE = 12000;
+const VIOLATION_CHANCE = 0.45;
 const BASE_FINE = 200;
+const RED_LIGHT_SPEED_THRESHOLD = 0.5; // m/s - moving through intersection on red
 
 export class MatatuCulture {
     constructor(gameState, matatuMesh, uiManager) {
@@ -13,55 +14,35 @@ export class MatatuCulture {
     }
 
     startTrafficLightCycle() {
-        // Initial state set in game.js: 'GREEN'
         setInterval(() => {
             if (this.gameState.isModalOpen) return;
-            
-            let newState;
-            if (this.gameState.trafficLightState === 'GREEN') {
-                newState = 'YELLOW';
-            } else if (this.gameState.trafficLightState === 'YELLOW') {
-                newState = 'RED';
-            } else {
-                newState = 'GREEN';
-            }
-            
-            this.gameState.trafficLightState = newState;
+            if (this.gameState.trafficLightState === 'GREEN') this.gameState.trafficLightState = 'YELLOW';
+            else if (this.gameState.trafficLightState === 'YELLOW') this.gameState.trafficLightState = 'RED';
+            else this.gameState.trafficLightState = 'GREEN';
         }, TRAFFIC_LIGHT_CYCLE);
     }
-    
+
     checkTrafficViolation() {
         if (this.gameState.role !== DRIVER || this.gameState.isModalOpen) return;
-        
-        // Check for running a red light (reckless driving)
-        if (this.gameState.trafficLightState === 'RED' && this.gameState.speed > 0.005) {
-            this.gameState.cash += 20; // Small reward for risk
-
+        if (this.gameState.trafficLightState !== 'RED') return;
+        const inIntersection = isInIntersection(this.matatuMesh.position.x, this.matatuMesh.position.z);
+        if (inIntersection && this.gameState.speed > RED_LIGHT_SPEED_THRESHOLD) {
             if (Math.random() < VIOLATION_CHANCE) {
-                this.triggerPoliceEncounter("Running a red light during rush hour.");
+                this.triggerPoliceEncounter("Running a red light at the intersection.");
             }
         }
-        
-        // We could add speeding checks here too
     }
-    
+
     checkObstacleCollision(matatuMesh, obstacles) {
         if (this.gameState.isModalOpen) return;
-        
-        // Simple bounding box for the matatu (using global THREE now)
         const matatuBox = new THREE.Box3().setFromObject(matatuMesh);
-
         for (const obstacle of obstacles) {
             const obstacleBox = new THREE.Box3().setFromObject(obstacle);
-            
             if (matatuBox.intersectsBox(obstacleBox)) {
                 this.gameState.cash -= 50;
-                this.gameState.speed *= 0.1; // Massive speed penalty
-                this.uiManager.showGameMessage("Hit an obstacle (Cone)! KSh 50 penalty for property damage!", 2000);
-                
-                // Nudge the obstacle away after collision to prevent repeated triggers
-                obstacle.position.z += this.gameState.speed > 0 ? -1 : 1;
-                return; 
+                this.gameState.speed *= 0.3;
+                this.uiManager.showGameMessage("Hit an obstacle! KSh 50 penalty.", 2000);
+                return;
             }
         }
     }
