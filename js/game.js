@@ -139,7 +139,7 @@ function createMatatuBus() {
 
 function createEnvironment() {
     // Grass/terrain beyond road
-    const groundGeo = new THREE.PlaneGeometry(600, 600);
+    const groundGeo = new THREE.PlaneGeometry(1600, 1600);
     const groundMat = new THREE.MeshLambertMaterial({ color: 0x2d5a27 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;

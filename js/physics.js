@@ -86,9 +86,9 @@ export class Physics {
             this.matatuMesh.rotation.y -= turnRate * dt;
         }
 
-        // --- 4. Move forward along heading ---
+        // --- 4. Move forward along heading (bus front is -Z in model space, so forward = -Z) ---
         if (absSpeed > MIN_SPEED) {
-            const dir = new THREE.Vector3(0, 0, 1);
+            const dir = new THREE.Vector3(0, 0, -1);
             dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.matatuMesh.rotation.y);
             this.matatuMesh.position.x += dir.x * speed * dt;
             this.matatuMesh.position.z += dir.z * speed * dt;

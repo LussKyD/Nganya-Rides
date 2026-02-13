@@ -128,7 +128,10 @@ export class ConductorRole {
         }
 
         const target = this.gameState.targetMarker;
-        const targetAngle = Math.atan2(target.x - this.matatuMesh.position.x, target.z - this.matatuMesh.position.z);
+        // Bus forward is -Z in model space; angle to face (dx, dz) is atan2(dx, -dz) = atan2(dx, pos.z - target.z)
+        const dx = target.x - this.matatuMesh.position.x;
+        const dz = target.z - this.matatuMesh.position.z;
+        const targetAngle = Math.atan2(dx, this.matatuMesh.position.z - target.z);
         let angleDiff = targetAngle - this.matatuMesh.rotation.y;
         if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
         if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;

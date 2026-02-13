@@ -3,7 +3,7 @@
  * Units: 1 = 1 meter.
  */
 export const ROAD_WIDTH = 14;           // Total width (2 lanes + shoulders)
-export const ROAD_LENGTH = 400;         // Main stretch length
+export const ROAD_LENGTH = 1200;        // Main stretch (long so road doesn't end)
 export const LANE_WIDTH = 3.5;
 export const GROUND_LEVEL = 0;
 export const INTERSECTION_Z = 0;        // Where crossing road is
