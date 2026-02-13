@@ -3,11 +3,39 @@
  * Units: 1 = 1 meter.
  */
 export const ROAD_WIDTH = 14;           // Total width (2 lanes + shoulders)
-export const ROAD_LENGTH = 1200;        // Main stretch (long so road doesn't end)
+export const ROAD_LENGTH = 1200;        // Main stretch
+export const ROAD_HALF = ROAD_LENGTH / 2;
 export const LANE_WIDTH = 3.5;
 export const GROUND_LEVEL = 0;
 export const INTERSECTION_Z = 0;        // Where crossing road is
 export const INTERSECTION_WIDTH = 12;   // Crossing road width
+
+/** Wrap z so the road loops: when you pass one end you appear at the other */
+export function wrapZ(z) {
+    let out = z;
+    while (out > ROAD_HALF) out -= ROAD_LENGTH;
+    while (out < -ROAD_HALF) out += ROAD_LENGTH;
+    return out;
+}
+
+/** Shortest signed delta Z for pathfinding (handles wrap) */
+export function shortestDeltaZ(fromZ, toZ) {
+    let d = toZ - fromZ;
+    if (d > ROAD_HALF) d -= ROAD_LENGTH;
+    if (d < -ROAD_HALF) d += ROAD_LENGTH;
+    return d;
+}
+
+/** Squared distance to target using shortest path (for arrival check) */
+export function shortestDistSq(busX, busZ, targetX, targetZ) {
+    const dx = targetX - busX;
+    const dz = shortestDeltaZ(busZ, targetZ);
+    return dx * dx + dz * dz;
+}
+
+export function getRoadBounds() {
+    return { xMin: -ROAD_WIDTH / 2, xMax: ROAD_WIDTH / 2, zMin: -ROAD_HALF, zMax: ROAD_HALF };
+}
 
 // Traffic light position (at intersection, so NPCs know where to stop)
 export function getTrafficLightPosition() {

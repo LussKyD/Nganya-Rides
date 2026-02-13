@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nairobi Matatu 3D Simulator</title>
-    <!-- Load Tailwind CSS for modern styling -->
+    <title>Nganya Rides — Nairobi Matatu Simulator</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%238800ff'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='%23ffd700'>M</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Custom Styles -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -79,6 +78,19 @@
 
     </div>
     
+    <!-- How to play (dismissible) -->
+    <div id="howToPlay" class="ui-container fixed inset-0 z-30 flex items-center justify-center bg-black/50 pointer-events-auto">
+        <div class="dashboard-card p-6 rounded-xl max-w-md mx-4 text-left shadow-2xl">
+            <h2 class="text-lg font-bold text-gray-800 mb-3">Nganya Rides — How to play</h2>
+            <ul class="text-sm text-gray-700 space-y-2 mb-4">
+                <li><strong>Driver:</strong> W or ↑ accelerate, S or ↓ brake, A/D turn. Stay on the road; obey the traffic light at the intersection.</li>
+                <li><strong>Conductor:</strong> Switch role — autopilot drives. At green rings (bus stops), pick up or drop off passengers to earn fares.</li>
+                <li>The road loops: drive past one end to reappear at the other.</li>
+            </ul>
+            <button id="dismissHowToPlay" class="w-full py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700">Got it</button>
+        </div>
+    </div>
+
     <!-- Temporary Game Message Box -->
     <div id="messageBox" class="fixed bottom-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-4 bg-yellow-600 text-white rounded-lg shadow-xl text-center transition-opacity duration-300 pointer-events-none opacity-0"></div>
 
@@ -104,6 +116,11 @@
 <!-- CRITICAL FIX: Load Three.js globally before the game module -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
+<script>
+    document.getElementById('dismissHowToPlay').addEventListener('click', function() {
+        document.getElementById('howToPlay').style.display = 'none';
+    });
+</script>
 <!-- Load the core game module -->
 <script type="module" src="js/game.js"></script>
 

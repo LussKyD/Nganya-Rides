@@ -1,9 +1,12 @@
 import { DRIVER, CONDUCTOR, stopRoute } from './game.js';
+import { shortestDeltaZ, shortestDistSq, ROAD_WIDTH } from './roads.js';
 
 const AUTOPILOT_FARE_RATE = 5;
 const STOP_RADIUS = 10;           // meters - arrive at bus stop
 const AUTOPILOT_ACCEL = 1.8;     // m/s²
-const AUTOPILOT_MAX_TURN = 0.6;  // rad/s
+const AUTOPILOT_MAX_TURN = 0.5;  // rad/s - gentle so we stay on road
+const ROAD_CENTER_X = 0;
+const PULL_OVER_APPROACH = 55;   // when this close (wrapped dist), steer to pull-over x
 
 export class ConductorRole {
     constructor(gameState, matatuMesh, scene, uiManager, busStops = []) {
@@ -68,7 +71,6 @@ export class ConductorRole {
             if (passengersGained > 0) {
                 this.gameState.passengers += passengersGained;
                 const fare = passengersGained * 50;
-                this.gameState.cash += fare;
                 this.uiManager.showGameMessage(`Wacha tupande! Picked up ${passengersGained} passengers. KSh ${fare}.`, 2000);
                 this.setNextDestination();
             } else {
@@ -93,8 +95,9 @@ export class ConductorRole {
     checkDestinationArrival(matatuMesh, scene) {
         if (!this.gameState.targetMarker) return;
 
-        const dist = matatuMesh.position.distanceTo(this.gameState.targetMarker);
-        if (dist >= STOP_RADIUS) return;
+        const t = this.gameState.targetMarker;
+        const distSq = shortestDistSq(matatuMesh.position.x, matatuMesh.position.z, t.x, t.z);
+        if (distSq >= STOP_RADIUS * STOP_RADIUS) return;
 
         const dest = this.gameState.currentDestination;
         const isTerminal = dest && (dest.baseFare > 0 && this.gameState.passengers > 0);
@@ -116,22 +119,35 @@ export class ConductorRole {
 
     autopilotDrive(currentSpeedAbs, deltaTime) {
         const dt = Math.min(deltaTime || 0.016, 0.05);
+        const bus = this.matatuMesh.position;
+
         if (!this.gameState.targetMarker) {
-            const cruisingSpeed = this.gameState.maxSpeed * 0.6;
+            // No target: cruise along road center
+            const cruisingSpeed = this.gameState.maxSpeed * 0.5;
             if (this.gameState.speed < cruisingSpeed) {
                 this.gameState.speed = Math.min(cruisingSpeed, this.gameState.speed + AUTOPILOT_ACCEL * dt);
             }
-            if (Math.random() < 0.008) {
-                this.matatuMesh.rotation.y += (Math.random() - 0.5) * 0.02;
-            }
+            const desiredX = ROAD_CENTER_X;
+            const dx = desiredX - bus.x;
+            const targetAngle = Math.atan2(dx, 2);
+            let angleDiff = targetAngle - this.matatuMesh.rotation.y;
+            if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+            if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+            this.matatuMesh.rotation.y += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), AUTOPILOT_MAX_TURN * dt);
             return;
         }
 
         const target = this.gameState.targetMarker;
-        // Bus forward is -Z in model space; angle to face (dx, dz) is atan2(dx, -dz) = atan2(dx, pos.z - target.z)
-        const dx = target.x - this.matatuMesh.position.x;
-        const dz = target.z - this.matatuMesh.position.z;
-        const targetAngle = Math.atan2(dx, this.matatuMesh.position.z - target.z);
+        const deltaZ = shortestDeltaZ(bus.z, target.z);
+        const distSq = shortestDistSq(bus.x, bus.z, target.x, target.z);
+        const dist = Math.sqrt(distSq);
+
+        // Follow road: aim for center (x=0) when far, pull-over (target.x) when close
+        const approachDist = Math.sqrt(distSq);
+        const desiredX = approachDist <= PULL_OVER_APPROACH ? target.x : ROAD_CENTER_X;
+        const dx = desiredX - bus.x;
+        // Bus forward is -Z; angle to face (dx, deltaZ) is atan2(dx, -deltaZ)
+        const targetAngle = Math.atan2(dx, -deltaZ);
         let angleDiff = targetAngle - this.matatuMesh.rotation.y;
         if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
         if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
@@ -139,9 +155,8 @@ export class ConductorRole {
         const maxTurn = AUTOPILOT_MAX_TURN * dt;
         this.matatuMesh.rotation.y += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), maxTurn);
 
-        const dist = this.matatuMesh.position.distanceTo(target);
         if (dist > STOP_RADIUS * 2) {
-            this.gameState.speed = Math.min(this.gameState.maxSpeed, this.gameState.speed + AUTOPILOT_ACCEL * dt);
+            this.gameState.speed = Math.min(this.gameState.maxSpeed * 0.85, this.gameState.speed + AUTOPILOT_ACCEL * dt);
         } else {
             this.gameState.speed = Math.max(0, this.gameState.speed - AUTOPILOT_ACCEL * 2 * dt);
         }

@@ -1,7 +1,7 @@
 /**
  * NPC traffic: cars that follow the road, obey traffic lights, and react to the player.
  */
-import { ROAD_WIDTH, ROAD_LENGTH, GROUND_LEVEL, getIntersectionBounds, getTrafficLightPosition } from './roads.js';
+import { ROAD_WIDTH, ROAD_LENGTH, ROAD_HALF, GROUND_LEVEL, getIntersectionBounds, getTrafficLightPosition } from './roads.js';
 
 const CAR_LENGTH = 4;
 const CAR_WIDTH = 1.8;
@@ -94,11 +94,9 @@ export class TrafficManager {
             const move = v.speed * deltaTime * v.direction;
             v.mesh.position.z += move;
 
-            // Remove when far off road
-            if (Math.abs(v.mesh.position.z) > ROAD_LENGTH / 2 + 30) {
-                this.scene.remove(v.mesh);
-                this.vehicles = this.vehicles.filter(x => x !== v);
-            }
+            // Loop: wrap at road ends so traffic never disappears
+            if (v.mesh.position.z > ROAD_HALF + 25) v.mesh.position.z = -ROAD_HALF + 25;
+            if (v.mesh.position.z < -ROAD_HALF - 25) v.mesh.position.z = ROAD_HALF - 25;
         }
     }
 
