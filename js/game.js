@@ -358,6 +358,7 @@ function newDay() {
     gameState.currentStop = null;
     gameState.speedingAccumulator = 0;
     gameState.maintenanceTicks = 0;
+    lastNpcCollisionTime = 0;
     if (conductorRole && conductorRole.targetMarkerMesh && scene) {
         scene.remove(conductorRole.targetMarkerMesh);
         conductorRole.targetMarkerMesh = null;
@@ -453,17 +454,23 @@ function applyRoadWrapAndBounds() {
     if (pos.x < b.xMin + edgeInset) { pos.x = b.xMin + edgeInset; if (gameState.speed > 0.5) gameState.speed *= 0.9; }
 }
 
+const NPC_COLLISION_COOLDOWN_MS = 3000; // don't re-apply slowdown for 3s so speed can recover
+let lastNpcCollisionTime = 0;
+
 export function checkCollision() {
     matatuCulture.checkObstacleCollision(matatuMesh, obstacles);
     conductorRole.checkDestinationArrival(matatuMesh, scene);
-    // NPC traffic: slow down if overlapping any vehicle
+    // NPC traffic: one-time slowdown per encounter so speed can rise again (no every-frame kill)
     if (trafficManager && gameState.role === DRIVER) {
+        const now = Date.now();
+        if (now - lastNpcCollisionTime < NPC_COLLISION_COOLDOWN_MS) return;
         const busBox = new THREE.Box3().setFromObject(matatuMesh);
         for (const v of trafficManager.getVehicles()) {
             const vBox = new THREE.Box3().setFromObject(v.mesh);
             if (busBox.intersectsBox(vBox)) {
-                gameState.speed *= 0.5;
-                if (gameState.speed < 0.5) gameState.speed = 0;
+                gameState.speed *= 0.6;
+                if (gameState.speed < 0.5) gameState.speed = 0.5;
+                lastNpcCollisionTime = now;
                 uiManager.showGameMessage("Traffic! Slow down.", 1500);
                 break;
             }
