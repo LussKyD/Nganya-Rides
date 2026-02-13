@@ -2,7 +2,7 @@
 import { UIManager } from './uiManager.js';
 import { Physics } from './physics.js';
 import { MatatuCulture } from './matatuCulture.js';
-import { createRoads, GROUND_LEVEL as ROAD_GROUND, wrapZ, getRoadBounds, ROAD_HALF, ROAD_WIDTH } from './roads.js';
+import { createRoads, GROUND_LEVEL as ROAD_GROUND, wrapZ, getRoadBounds, ROAD_HALF } from './roads.js';
 import { TrafficManager } from './traffic.js';
 import { createBusStopMeshes } from './busStops.js';
 // Note: ConductorRole imported later to break circular dependency
@@ -318,9 +318,9 @@ function applyRoadWrapAndBounds() {
     if (pos.z > ROAD_HALF - margin) pos.z = -ROAD_HALF + margin;
     if (pos.z < -ROAD_HALF + margin) pos.z = ROAD_HALF - margin;
     const b = getRoadBounds();
-    const edge = ROAD_WIDTH / 2 - 2;
-    if (pos.x > edge) { pos.x = edge; if (gameState.speed > 0.5) gameState.speed *= 0.9; }
-    if (pos.x < -edge) { pos.x = -edge; if (gameState.speed > 0.5) gameState.speed *= 0.9; }
+    const edgeInset = 2;
+    if (pos.x > b.xMax - edgeInset) { pos.x = b.xMax - edgeInset; if (gameState.speed > 0.5) gameState.speed *= 0.9; }
+    if (pos.x < b.xMin + edgeInset) { pos.x = b.xMin + edgeInset; if (gameState.speed > 0.5) gameState.speed *= 0.9; }
 }
 
 export function checkCollision() {
