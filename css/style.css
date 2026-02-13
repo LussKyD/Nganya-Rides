@@ -95,6 +95,7 @@ body {
 }
 .hud-label { font-weight: 600; color: var(--color-text); margin: 0 0 0.15rem 0; }
 .hud-value { color: var(--color-muted); margin: 0; font-size: 0.75rem; }
+.hud-muted { color: var(--color-muted); opacity: 0.85; font-size: 0.7rem; margin-left: 0.25rem; }
 .hud-right { text-align: right; }
 .hud-role { color: var(--color-danger); }
 .hud-role.conductor { color: var(--color-success); }

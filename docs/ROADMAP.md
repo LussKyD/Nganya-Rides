@@ -42,15 +42,15 @@ From prototype skeleton to full-fledged bus simulator. Phased, actionable.
 - [x] **AI cars** — Lane follow, lights, wrap in `traffic.js`.
 - [x] **Traffic lights** — NPCs stop on red; player has full freedom (GTA-style), police risk only.
 - [ ] **Random traffic events** — Breakdowns, jams, diversions (lightweight).
-- [ ] **Police fines** — Already in `matatuCulture.js`; extend for violations.
-- [ ] **Speed limits** — Per zone or road; display and enforce.
-- [ ] **Penalties & license points** — Fines, points, game-over or suspension at max points.
+- [x] **Police fines** — Red light + speeding; cooldown, cash floor, too-broke wave-on.
+- [x] **Speed limits** — Limit 50 km/h on HUD; over limit 2s = possible speeding fine.
+- [ ] **Penalties & license points** — Fines, points, game-over or suspension (optional).
 
 ### Fuel & economy
 
 - [x] **Fuel stations** — Two stations (visual pumps + atFuelStation); refuel anywhere for now.
 - [ ] **Fuel cost** — Variable price; show on HUD when at station.
-- [ ] **Maintenance cost** — Periodic; deduct from cash.
+- [x] **Maintenance cost** — KSh 15 every 60s while driving; cash floor applies.
 - [ ] **Breakdowns** — Random chance or wear-based; stop until repaired.
 - [ ] **Tire wear** — Optional; affects grip or triggers maintenance.
 - [ ] **Upgrades** — Engine (accel/top speed), suspension (comfort), fuel efficiency. Unlock with cash.

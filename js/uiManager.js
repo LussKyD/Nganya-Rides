@@ -26,6 +26,7 @@ export class UIManager {
         this.policeReasonDisplay = document.getElementById('policeReason');
         this.destinationDisplay = document.getElementById('destinationDisplay');
         this.passengerCountDisplay = document.getElementById('passengerCountDisplay');
+        this.speedLimitDisplay = document.getElementById('speedLimitDisplay');
         this.goalProgress = document.getElementById('goalProgress');
         this.outOfFuelOverlay = document.getElementById('outOfFuelOverlay');
         this.goalReachedOverlay = document.getElementById('goalReachedOverlay');
@@ -91,8 +92,9 @@ export class UIManager {
         this.cashDisplay.textContent = `KSh ${Math.round(gameState.cash)}`;
         this.fuelDisplay.textContent = `${Math.round(gameState.fuel)}%`;
         // Speed in m/s -> km/h
-        this.speedDisplay.textContent = `${(Math.abs(gameState.speed) * 3.6).toFixed(1)} km/h`; 
-        
+        this.speedDisplay.textContent = `${(Math.abs(gameState.speed) * 3.6).toFixed(1)} km/h`;
+        if (this.speedLimitDisplay) this.speedLimitDisplay.textContent = `Limit ${gameState.speedLimitKmh != null ? gameState.speedLimitKmh : 50}`;
+
         this.destinationDisplay.textContent = gameState.currentDestination ? gameState.currentDestination.name : 'N/A';
         this.passengerCountDisplay.textContent = `${gameState.passengers}/${gameState.maxPassengers}`;
 

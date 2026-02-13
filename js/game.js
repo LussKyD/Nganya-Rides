@@ -42,6 +42,9 @@ export const gameState = {
     goalReached: false,
     goalCash: GOAL_CASH,
     atFuelStation: false,
+    speedLimitKmh: 50,
+    speedingAccumulator: 0,
+    maintenanceTicks: 0,
 
     // Phase 1 — vehicle systems
     handbrake: false,
@@ -353,6 +356,8 @@ function newDay() {
     gameState.currentDestination = null;
     gameState.targetMarker = null;
     gameState.currentStop = null;
+    gameState.speedingAccumulator = 0;
+    gameState.maintenanceTicks = 0;
     if (conductorRole && conductorRole.targetMarkerMesh && scene) {
         scene.remove(conductorRole.targetMarkerMesh);
         conductorRole.targetMarkerMesh = null;
@@ -383,13 +388,29 @@ function switchRole() {
 // --- PASSIVE GAME LOOP (500ms) ---
 // ----------------------------------
 
+const MAINTENANCE_INTERVAL_TICKS = 120; // 60s at 500ms/tic
+const MAINTENANCE_COST = 15;
+const CASH_FLOOR = -2000;
+
 function gameLoop() {
     if (!gameState.isDriving || gameState.isModalOpen) return;
 
-    // Passive fuel consumption and conductor earnings
     physics.consumeFuel();
     conductorRole.passiveRoleUpdate();
-    
+
+    if (gameState.role === DRIVER) {
+        const speedKmh = Math.abs(gameState.speed) * 3.6;
+        if (speedKmh > gameState.speedLimitKmh) gameState.speedingAccumulator += 0.5;
+        else gameState.speedingAccumulator = 0;
+        matatuCulture.checkSpeedingViolation();
+    }
+
+    gameState.maintenanceTicks++;
+    if (gameState.maintenanceTicks >= MAINTENANCE_INTERVAL_TICKS) {
+        gameState.maintenanceTicks = 0;
+        gameState.cash = Math.max(CASH_FLOOR, gameState.cash - MAINTENANCE_COST);
+    }
+
     uiManager.updateUI();
 }
 

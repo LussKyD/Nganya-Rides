@@ -10,6 +10,8 @@ const RED_LIGHT_SPEED_THRESHOLD = 0.5; // m/s - moving through intersection on r
 const POLICE_COOLDOWN_MS = 50000;       // no new encounter for 50s after last one
 const CASH_FLOOR = -2000;               // cash never goes below this (so you can recover)
 const TOO_BROKE_FOR_FINE = -800;        // below this, officer waves you on — no modal, keep driving
+const SPEEDING_FINE_BASE = 150;
+const SPEEDING_THRESHOLD_SEC = 2;       // over limit for this long before possible fine
 
 export class MatatuCulture {
     constructor(gameState, matatuMesh, uiManager) {
@@ -45,6 +47,22 @@ export class MatatuCulture {
         }
     }
 
+    checkSpeedingViolation() {
+        if (this.gameState.role !== DRIVER || this.gameState.isModalOpen) return;
+        if (this.gameState.speedingAccumulator < SPEEDING_THRESHOLD_SEC) return;
+        if (Date.now() - this.lastPoliceEncounterTime < POLICE_COOLDOWN_MS) return;
+        if (this.gameState.cash < TOO_BROKE_FOR_FINE) {
+            this.uiManager.showGameMessage("Officer waves you on — you're broke.", 2500);
+            this.lastPoliceEncounterTime = Date.now();
+            this.gameState.speedingAccumulator = 0;
+            return;
+        }
+        if (Math.random() < VIOLATION_CHANCE) {
+            this.gameState.speedingAccumulator = 0;
+            this.triggerPoliceEncounter("Speeding.", SPEEDING_FINE_BASE);
+        }
+    }
+
     checkObstacleCollision(matatuMesh, obstacles) {
         if (this.gameState.isModalOpen) return;
         const matatuBox = new THREE.Box3().setFromObject(matatuMesh);
@@ -63,13 +81,14 @@ export class MatatuCulture {
     // --- POLICE ENCOUNTER (BRIBERY/EXTORTION) ---
     // ----------------------------------
     
-    triggerPoliceEncounter(reason) {
+    triggerPoliceEncounter(reason, fineBase) {
         if (this.gameState.isModalOpen) return;
 
         this.lastPoliceEncounterTime = Date.now();
         this.gameState.isModalOpen = true;
 
-        const fine = BASE_FINE + Math.floor(Math.random() * 200);
+        const base = fineBase != null ? fineBase : BASE_FINE;
+        const fine = base + Math.floor(Math.random() * 150);
         this.uiManager.showPoliceModal(fine, reason, this.handlePoliceDecision.bind(this));
     }
 
