@@ -341,9 +341,10 @@ export function checkCollision() {
     }
 }
 
+let animationStopped = false;
 function animate() {
+    if (animationStopped) return;
     try {
-        requestAnimationFrame(animate);
         const deltaTime = clock.getDelta();
 
         if (!gameState.isModalOpen) {
@@ -363,8 +364,11 @@ function animate() {
 
         renderer.render(scene, camera);
     } catch (e) {
+        animationStopped = true;
         console.error("Critical error in animation loop, stopping game:", e);
+        return;
     }
+    requestAnimationFrame(animate);
 }
 
 // ----------------------------------
