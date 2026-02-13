@@ -63,6 +63,8 @@ export class Physics {
         let speed = this.gameState.speed;
         const handbrake = !!(this.keyState[' '] || this.keyState['Space']);
         this.gameState.handbrake = handbrake;
+        const isAccelerating = this.keyState['w'] || this.keyState['W'] || this.keyState['ArrowUp'] || this.touchControl.forward;
+        const isBraking = this.keyState['s'] || this.keyState['S'] || this.keyState['ArrowDown'];
 
         // --- 1. Steering (slower, heavier) ---
         const isTurningLeft = this.keyState['a'] || this.keyState['A'] || this.keyState['ArrowLeft'] || this.touchControl.left;
@@ -75,9 +77,6 @@ export class Physics {
 
         // --- 2. Acceleration / Brake / Handbrake (driver only) ---
         if (currentRole === DRIVER) {
-            const isAccelerating = this.keyState['w'] || this.keyState['W'] || this.keyState['ArrowUp'] || this.touchControl.forward;
-            const isBraking = this.keyState['s'] || this.keyState['S'] || this.keyState['ArrowDown'];
-
             if (handbrake) {
                 const decel = HANDBRAKE_DECEL * dt;
                 if (speed > 0) speed = Math.max(0, speed - decel);
