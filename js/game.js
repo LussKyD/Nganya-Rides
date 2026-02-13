@@ -1,6 +1,6 @@
 // REMOVED: import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 import { UIManager } from './uiManager.js';
-import { Physics } from './physics.js';
+import { Physics } from './physics.js?v=4';
 import { MatatuCulture } from './matatuCulture.js';
 import { createRoads, GROUND_LEVEL as ROAD_GROUND, wrapZ, getRoadBounds, ROAD_HALF } from './roads.js';
 import { TrafficManager } from './traffic.js';
