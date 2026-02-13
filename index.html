@@ -11,6 +11,35 @@
 </head>
 <body>
 
+    <!-- Loading: shown until game signals ready -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Loading Nganya Rides…</p>
+        </div>
+    </div>
+    <div id="loadingError" class="loading-screen hidden">
+        <div class="loading-content">
+            <p class="loading-error-text">Something went wrong.</p>
+            <p id="loadingErrorHint" class="loading-error-hint hidden"></p>
+            <button id="loadingRetry" class="loading-retry">Retry</button>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        if (window.location.protocol === 'file:') {
+            document.getElementById('loadingScreen').classList.add('hidden');
+            var err = document.getElementById('loadingError');
+            err.classList.remove('hidden');
+            document.querySelector('#loadingError .loading-error-text').textContent = "Opening the file directly doesn't work. Use GitHub Pages or a local server.";
+            var hint = document.getElementById('loadingErrorHint');
+            hint.textContent = "Best: push to GitHub, enable Pages, open the Pages URL. Or in this folder run: npx serve or python -m http.server 8000";
+            hint.classList.remove('hidden');
+        }
+    })();
+    </script>
+
     <!-- Three.js Render Target (Canvas is created and attached here) -->
     <div id="canvasContainer"></div>
 
@@ -18,14 +47,20 @@
     <div class="ui-container">
 
         <!-- Top Dashboard (HUD) -->
-        <div class="dashboard-card p-4 rounded-b-xl shadow-lg w-full max-w-sm mx-auto flex justify-between items-center">
-            <div class="text-xs sm:text-sm">
-                <p class="font-bold text-gray-700">Role: <span id="roleDisplay" class="text-red-600">Driver</span></p>
-                <p class="text-gray-600">Speed: <span id="speedDisplay">0 km/h</span></p>
+        <div class="dashboard-card hud-card">
+            <div class="hud-row">
+                <div>
+                    <p class="hud-label">Role <span id="roleDisplay" class="hud-role">Driver</span></p>
+                    <p class="hud-value">Speed <span id="speedDisplay">0 km/h</span></p>
+                </div>
+                <div class="hud-right">
+                    <p class="hud-label">Cash <span id="cashDisplay">KSh 0</span></p>
+                    <p class="hud-value">Fuel <span id="fuelDisplay">100%</span></p>
+                </div>
             </div>
-            <div class="text-xs sm:text-sm text-right">
-                <p class="font-bold text-indigo-700">Cash: <span id="cashDisplay">KSh 0</span></p>
-                <p class="text-gray-600">Fuel: <span id="fuelDisplay">100%</span></p>
+            <div class="hud-goal">
+                <span class="hud-goal-label">Today’s target</span>
+                <span id="goalProgress" class="hud-goal-value">KSh 0 / 5,000</span>
             </div>
         </div>
         
@@ -86,6 +121,7 @@
             <ul class="text-sm text-gray-700 space-y-2 mb-4">
                 <li><strong>Driver:</strong> W or ↑ accelerate, S or ↓ brake, A/D turn. Stay on the road; obey the traffic light at the intersection.</li>
                 <li><strong>Conductor:</strong> Switch role — autopilot drives. At green rings (bus stops), pick up or drop off passengers to earn fares.</li>
+                <li><strong>Today’s target:</strong> Earn KSh 5,000. Out of fuel and cash? Start a new day.</li>
                 <li>The road loops: drive past one end to reappear at the other.</li>
             </ul>
             <button id="dismissHowToPlay" class="w-full py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700">Got it</button>
@@ -93,7 +129,26 @@
     </div>
 
     <!-- Temporary Game Message Box -->
-    <div id="messageBox" class="fixed bottom-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-4 bg-yellow-600 text-white rounded-lg shadow-xl text-center transition-opacity duration-300 pointer-events-none opacity-0"></div>
+    <div id="messageBox" class="message-toast"></div>
+
+    <!-- Out of fuel overlay -->
+    <div id="outOfFuelOverlay" class="overlay hidden">
+        <div class="overlay-card">
+            <h2 class="overlay-title" id="outOfFuelTitle">Out of fuel</h2>
+            <p class="overlay-text" id="outOfFuelText">Refuel to get back on the road.</p>
+            <button id="outOfFuelRefuel" class="btn-primary">Refuel (KSh 500)</button>
+            <button id="outOfFuelNewDay" class="btn-primary hidden" style="margin-top: 0.5rem; background: #059669;">Start new day</button>
+        </div>
+    </div>
+
+    <!-- Goal reached -->
+    <div id="goalReachedOverlay" class="overlay hidden">
+        <div class="overlay-card overlay-card-success">
+            <h2 class="overlay-title">Day complete!</h2>
+            <p class="overlay-text">You hit today’s target. Well done.</p>
+            <button id="goalReachedDismiss" class="btn-primary">Continue</button>
+        </div>
+    </div>
 
     <!-- Police Interaction Modal -->
     <div id="policeModal" class="fixed inset-0 flex items-center justify-center hidden">
@@ -121,7 +176,10 @@
     document.getElementById('dismissHowToPlay').addEventListener('click', function() {
         document.getElementById('howToPlay').style.display = 'none';
     });
-    </script>
+    document.getElementById('loadingRetry').addEventListener('click', function() {
+        window.location.reload();
+    });
+</script>
 <!-- Load the core game module (v=2 cache bust so GitHub Pages serves latest) -->
 <script type="module" src="js/game.js?v=2"></script>
 

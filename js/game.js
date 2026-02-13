@@ -17,17 +17,19 @@ const MATATU_BODY_COLOR = 0x8800ff;
 const MATATU_ACCENT_COLOR = 0xffd700; 
 
 // --- GLOBAL SHARED OBJECTS ---
+export const GOAL_CASH = 5000;
+
 export const gameState = {
     role: DRIVER,
-    cash: 1000, 
+    cash: 1000,
     fuel: 100,
     isDriving: false,
-    speed: 0,                             // m/s (physics)
-    maxSpeed: 15,                         // m/s ~54 km/h
+    speed: 0,
+    maxSpeed: 15,
     acceleration: 2.5,
-    rotationSpeed: 0.8,                   // rad/s for conductor autopilot
+    rotationSpeed: 0.8,
     autopilotInterval: null,
-    
+
     trafficLightState: 'GREEN',
     isModalOpen: false,
 
@@ -36,6 +38,9 @@ export const gameState = {
     currentDestination: null,
     targetMarker: null,
     currentStop: null,
+
+    goalReached: false,
+    goalCash: GOAL_CASH,
 };
 
 // --- THREE.JS VARIABLES ---
@@ -180,29 +185,49 @@ export function initScene() {
     initModules();
 }
 
-// NEW: Helper function to initialize modules after Three.js scene is created
+function hideLoadingShowGame() {
+    const el = document.getElementById('loadingScreen');
+    if (el) el.classList.add('hidden');
+    const err = document.getElementById('loadingError');
+    if (err) err.classList.add('hidden');
+}
+
+function showLoadingError() {
+    const el = document.getElementById('loadingScreen');
+    if (el) el.classList.add('hidden');
+    const err = document.getElementById('loadingError');
+    if (err) err.classList.remove('hidden');
+}
+
 function initModules() {
-    import('./conductorRole.js').then(({ ConductorRole }) => {
-        uiManager = new UIManager(gameState, touchControl);
-        physics = new Physics(gameState, matatuMesh, keyState, touchControl);
-        matatuCulture = new MatatuCulture(gameState, matatuMesh, uiManager);
-        trafficManager = new TrafficManager(scene, gameState);
-        conductorRole = new ConductorRole(gameState, matatuMesh, scene, uiManager, busStops);
+    import('./conductorRole.js')
+        .then(({ ConductorRole }) => {
+            uiManager = new UIManager(gameState, touchControl);
+            physics = new Physics(gameState, matatuMesh, keyState, touchControl);
+            matatuCulture = new MatatuCulture(gameState, matatuMesh, uiManager);
+            trafficManager = new TrafficManager(scene, gameState);
+            conductorRole = new ConductorRole(gameState, matatuMesh, scene, uiManager, busStops);
 
-        uiManager.linkActions({
-            switchRole: switchRole,
-            handleRefuel: handleRefuel,
-            handleConductorAction: conductorRole.handleConductorAction.bind(conductorRole),
-            startRoute: startRoute,
-            stopRoute: stopRoute,
+            uiManager.linkActions({
+                switchRole: switchRole,
+                handleRefuel: handleRefuel,
+                newDay: newDay,
+                handleConductorAction: conductorRole.handleConductorAction.bind(conductorRole),
+                startRoute: startRoute,
+                stopRoute: stopRoute,
+            });
+
+            uiManager.setupUI();
+            matatuCulture.startTrafficLightCycle();
+
+            animate();
+            hideLoadingShowGame();
+            uiManager.showGameMessage("Today's target: KSh 5,000. Drive or conduct — good luck!", 5000);
+        })
+        .catch((err) => {
+            console.error('Game init failed', err);
+            showLoadingError();
         });
-
-        uiManager.setupUI();
-        matatuCulture.startTrafficLightCycle();
-
-        animate();
-        uiManager.showGameMessage("Road loops — no dead ends. Conductor autopilot follows the road. Have fun!", 5500);
-    });
 }
 
 
@@ -243,22 +268,39 @@ export function stopRoute() {
     uiManager.showGameMessage("Route STOPPED.", 2000);
 }
 
+const REFUEL_COST = 500;
+const REFUEL_AMOUNT = 100;
+
 function handleRefuel() {
-    const REFUELL_COST = 500;
-    const REFUELL_AMOUNT = 100;
-    
     if (gameState.fuel === 100) {
         uiManager.showGameMessage("Fuel is already full!", 2000);
         return;
     }
-    if (gameState.cash >= REFUELL_COST) {
-        gameState.cash -= REFUELL_COST;
-        gameState.fuel = REFUELL_AMOUNT;
-        uiManager.showGameMessage("Refueled! Back to 100%. Keep the money flowing!", 2000);
-        stopRoute(); 
+    if (gameState.cash >= REFUEL_COST) {
+        gameState.cash -= REFUEL_COST;
+        gameState.fuel = REFUEL_AMOUNT;
+        uiManager.showGameMessage("Refueled! Back to 100%.", 2000);
+        stopRoute();
     } else {
         uiManager.showGameMessage("Insufficient funds! KSh 500 needed to refuel.", 3000);
     }
+    uiManager.updateUI();
+}
+
+function newDay() {
+    stopRoute();
+    gameState.cash = 1000;
+    gameState.fuel = 100;
+    gameState.goalReached = false;
+    gameState.passengers = 0;
+    gameState.currentDestination = null;
+    gameState.targetMarker = null;
+    gameState.currentStop = null;
+    if (conductorRole && conductorRole.targetMarkerMesh && scene) {
+        scene.remove(conductorRole.targetMarkerMesh);
+        conductorRole.targetMarkerMesh = null;
+    }
+    uiManager.showGameMessage("New day! Good luck.", 2500);
     uiManager.updateUI();
 }
 
@@ -376,16 +418,16 @@ function animate() {
 // ----------------------------------
 
 window.onload = function() {
-    // Set up keyboard listeners globally
     document.addEventListener('keydown', (e) => {
         keyState[e.key] = true;
-        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
-            startRoute();
-        }
+        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') startRoute();
     });
-    document.addEventListener('keyup', (e) => {
-        keyState[e.key] = false;
-    });
+    document.addEventListener('keyup', (e) => { keyState[e.key] = false; });
 
-    initScene();
+    try {
+        initScene();
+    } catch (e) {
+        console.error('Scene init failed', e);
+        showLoadingError();
+    }
 };

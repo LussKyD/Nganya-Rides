@@ -4,19 +4,23 @@ A browser-based 3D matatu (minibus) simulator: drive on a looping road, switch t
 
 ## How to run
 
-Serve the project over HTTP (required for ES modules):
+**No install:** Open the game on **GitHub Pages** (once the repo has Pages enabled):  
+`https://<your-username>.github.io/Nganya-Rides/`  
+That’s the intended environment — no Node or npm needed.
+
+**Optional local:** Don’t open `index.html` by double‑clicking (file:// won’t work). From this folder run a local server, then open the URL it gives you:
 
 ```bash
 npx serve
-# or: python -m http.server 8000
+# or (if you have Python): python -m http.server 8000
 ```
-
-Then open `http://localhost:3000` (or the port shown) in your browser.
+Then open `http://localhost:3000` (or the port from the command).
 
 ## How to play
 
 - **Driver:** **W** / ↑ accelerate, **S** / ↓ brake, **A** / **D** turn. Stay on the road and obey the traffic light at the intersection.
 - **Conductor:** Click **Switch Role**. Autopilot drives along the road. At **green rings** (bus stops), use **Pick up** or **Drop off** to earn fares.
+- **Today’s target:** Earn KSh 5,000. Out of fuel and out of cash? Use **Start new day** to reset.
 - The **road loops** — drive past one end to reappear at the other. Refuel when needed (KSh 500).
 
 ## Tech

@@ -26,7 +26,14 @@ export class UIManager {
         this.policeReasonDisplay = document.getElementById('policeReason');
         this.destinationDisplay = document.getElementById('destinationDisplay');
         this.passengerCountDisplay = document.getElementById('passengerCountDisplay');
-        
+        this.goalProgress = document.getElementById('goalProgress');
+        this.outOfFuelOverlay = document.getElementById('outOfFuelOverlay');
+        this.goalReachedOverlay = document.getElementById('goalReachedOverlay');
+        this.outOfFuelTitle = document.getElementById('outOfFuelTitle');
+        this.outOfFuelText = document.getElementById('outOfFuelText');
+        this.outOfFuelRefuelBtn = document.getElementById('outOfFuelRefuel');
+        this.outOfFuelNewDayBtn = document.getElementById('outOfFuelNewDay');
+
         this.linkedActions = {};
     }
     
@@ -64,17 +71,23 @@ export class UIManager {
             element.addEventListener('mouseleave', endFunc); 
         };
 
-        // Setup Player Driving Controls
         setupButton(this.accelerateButton, 'forward', true);
         setupButton(this.turnLeftButton, 'left');
         setupButton(this.turnRightButton, 'right');
+
+        if (this.outOfFuelRefuelBtn) this.outOfFuelRefuelBtn.addEventListener('click', () => this.linkedActions.handleRefuel());
+        if (this.outOfFuelNewDayBtn) this.outOfFuelNewDayBtn.addEventListener('click', () => this.linkedActions.newDay && this.linkedActions.newDay());
+        const goalDismiss = document.getElementById('goalReachedDismiss');
+        if (goalDismiss) goalDismiss.addEventListener('click', () => {
+            this.goalReachedOverlay.classList.add('hidden');
+        });
     }
 
     updateUI() {
         const { gameState, DRIVER } = this;
         // Update HUD
         this.roleDisplay.textContent = gameState.role;
-        this.roleDisplay.className = gameState.role === DRIVER ? 'text-red-600' : 'text-green-600';
+        this.roleDisplay.className = gameState.role === DRIVER ? 'hud-role' : 'hud-role conductor';
         this.cashDisplay.textContent = `KSh ${Math.round(gameState.cash)}`;
         this.fuelDisplay.textContent = `${Math.round(gameState.fuel)}%`;
         // Speed in m/s -> km/h
@@ -82,6 +95,27 @@ export class UIManager {
         
         this.destinationDisplay.textContent = gameState.currentDestination ? gameState.currentDestination.name : 'N/A';
         this.passengerCountDisplay.textContent = `${gameState.passengers}/${gameState.maxPassengers}`;
+
+        if (this.goalProgress) {
+            const goal = gameState.goalCash != null ? gameState.goalCash : 5000;
+            this.goalProgress.textContent = `KSh ${Math.round(gameState.cash).toLocaleString()} / ${goal.toLocaleString()}`;
+        }
+        if (!gameState.goalReached && gameState.cash >= (gameState.goalCash || 5000)) {
+            gameState.goalReached = true;
+            if (this.goalReachedOverlay) this.goalReachedOverlay.classList.remove('hidden');
+        }
+        if (this.outOfFuelOverlay) {
+            if (gameState.fuel <= 0) {
+                this.outOfFuelOverlay.classList.remove('hidden');
+                const canRefuel = gameState.cash >= 500;
+                if (this.outOfFuelTitle) this.outOfFuelTitle.textContent = canRefuel ? 'Out of fuel' : 'Out of fuel and out of cash';
+                if (this.outOfFuelText) this.outOfFuelText.textContent = canRefuel ? 'Refuel to get back on the road.' : 'You need KSh 500 to refuel. Start a new day to try again.';
+                if (this.outOfFuelRefuelBtn) this.outOfFuelRefuelBtn.classList.toggle('hidden', !canRefuel);
+                if (this.outOfFuelNewDayBtn) this.outOfFuelNewDayBtn.classList.toggle('hidden', canRefuel);
+            } else {
+                this.outOfFuelOverlay.classList.add('hidden');
+            }
+        }
 
         // Update control visibility
         if (gameState.isModalOpen) {
