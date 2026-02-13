@@ -27,7 +27,6 @@ export class MatatuCulture {
             }
             
             this.gameState.trafficLightState = newState;
-            this.uiManager.updateTrafficLight(newState);
         }, TRAFFIC_LIGHT_CYCLE);
     }
     
@@ -77,7 +76,7 @@ export class MatatuCulture {
         this.gameState.isModalOpen = true;
         
         const fine = BASE_FINE + Math.floor(Math.random() * 200);
-        this.uiManager.openPoliceModal(reason, fine, this.handlePoliceDecision.bind(this));
+        this.uiManager.showPoliceModal(fine, reason, this.handlePoliceDecision.bind(this));
     }
     
     handlePoliceDecision(action, fine) {

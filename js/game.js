@@ -59,8 +59,8 @@ export const obstacles = [];
 // ----------------------------------
 
 function createMatatuPlaceholder() {
-    //     const matatuGroup = new THREE.Group();
-    
+    const matatuGroup = new THREE.Group();
+
     // 1. Main Body
     const bodyGeometry = new THREE.BoxGeometry(2.5, 1.5, 6);
     const bodyMaterial = new THREE.MeshLambertMaterial({ color: MATATU_BODY_COLOR }); 

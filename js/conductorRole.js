@@ -55,7 +55,7 @@ export class ConductorRole {
     // ----------------------------------
     
     passiveRoleUpdate() {
-        if (this.gameState.role === DRIVER) {
+        if (this.gameState.role === CONDUCTOR) {
             // Conductor Autopilot: Collects small fares passively
             const autoFare = Math.floor(Math.random() * 5) + AUTOPILOT_FARE_RATE;
             this.gameState.cash += autoFare;
