@@ -41,6 +41,13 @@ export const gameState = {
 
     goalReached: false,
     goalCash: GOAL_CASH,
+
+    // Phase 1 — vehicle systems
+    handbrake: false,
+    indicatorLeft: false,
+    indicatorRight: false,
+    headlightsOn: false,
+    hornActive: false,
 };
 
 // --- THREE.JS VARIABLES ---
@@ -124,7 +131,7 @@ function createMatatuBus() {
     lR.position.x = 0.6;
     g.add(lR);
 
-    // Wheels (6 for minibus)
+    // Wheels (6 for minibus) — store refs for rotation animation
     const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 16);
     const wheelMat = new THREE.MeshLambertMaterial({ color: 0x171717 });
     const wheelPositions = [
@@ -132,12 +139,40 @@ function createMatatuBus() {
         [w/2 + 0.2, -h/2 + 0.35, 0], [-w/2 - 0.2, -h/2 + 0.35, 0],
         [w/2 + 0.2, -h/2 + 0.35, len/2 - 0.8], [-w/2 - 0.2, -h/2 + 0.35, len/2 - 0.8]
     ];
+    const wheelMeshes = [];
     wheelPositions.forEach(([x, y, z]) => {
         const wheel = new THREE.Mesh(wheelGeo, wheelMat);
         wheel.rotation.z = Math.PI / 2;
         wheel.position.set(x, y, z);
         g.add(wheel);
+        wheelMeshes.push(wheel);
     });
+    g.userData.wheels = wheelMeshes;
+
+    // Indicator lights (small quads left/right) — visibility toggled by blink
+    const indMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+    const indGeo = new THREE.PlaneGeometry(0.2, 0.15);
+    const indL = new THREE.Mesh(indGeo, indMat.clone());
+    indL.position.set(-w/2 - 0.15, h * 0.25, -len/2 - 0.2);
+    indL.rotation.y = Math.PI / 2;
+    g.add(indL);
+    const indR = new THREE.Mesh(indGeo, indMat.clone());
+    indR.position.set(w/2 + 0.15, h * 0.25, -len/2 - 0.2);
+    indR.rotation.y = -Math.PI / 2;
+    g.add(indR);
+    indL.visible = false;
+    indR.visible = false;
+    g.userData.indicatorLeft = indL;
+    g.userData.indicatorRight = indR;
+
+    // Headlight point lights (child lights, intensity set from gameState.headlightsOn)
+    const headLightL = new THREE.PointLight(0xffeedd, 0, 22);
+    headLightL.position.set(-0.6, h * 0.1, -len/2 - 0.2);
+    g.add(headLightL);
+    const headLightR = new THREE.PointLight(0xffeedd, 0, 22);
+    headLightR.position.set(0.6, h * 0.1, -len/2 - 0.2);
+    g.add(headLightR);
+    g.userData.headLights = [headLightL, headLightR];
 
     return g;
 }
@@ -383,6 +418,60 @@ export function checkCollision() {
     }
 }
 
+let indicatorBlinkPhase = 0;
+
+function updateVehicleVisuals(deltaTime) {
+    if (!matatuMesh || !matatuMesh.userData) return;
+    const ud = matatuMesh.userData;
+
+    // Wheel rotation (roll forward/back)
+    if (ud.wheels && gameState.speed !== 0) {
+        const roll = -gameState.speed * deltaTime * 0.8;
+        ud.wheels.forEach(w => { w.rotation.x += roll; });
+    }
+
+    // Headlights
+    if (ud.headLights) {
+        const intensity = gameState.headlightsOn ? 0.85 : 0;
+        ud.headLights.forEach(l => { l.intensity = intensity; });
+    }
+
+    // Indicator blink (~1 Hz)
+    indicatorBlinkPhase += deltaTime;
+    if (indicatorBlinkPhase > 0.5) indicatorBlinkPhase = 0;
+    const blinkOn = indicatorBlinkPhase < 0.25;
+    if (ud.indicatorLeft) ud.indicatorLeft.visible = gameState.indicatorLeft && blinkOn;
+    if (ud.indicatorRight) ud.indicatorRight.visible = gameState.indicatorRight && blinkOn;
+}
+
+let hornAudioContext = null;
+function initHorn() {
+    if (hornAudioContext) return hornAudioContext;
+    hornAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    return hornAudioContext;
+}
+function playHorn(on) {
+    if (!on) {
+        if (window.__hornOsc) {
+            try { window.__hornOsc.stop(); } catch (_) {}
+            window.__hornOsc = null;
+        }
+        return;
+    }
+    if (window.__hornOsc) return; // already playing
+    const ctx = initHorn();
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 220;
+    gain.gain.value = 0.08;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    window.__hornOsc = osc;
+}
+
 let animationStopped = false;
 function animate() {
     if (animationStopped) return;
@@ -391,6 +480,7 @@ function animate() {
 
         if (!gameState.isModalOpen) {
             physics.driveUpdate(gameState.role, deltaTime);
+            updateVehicleVisuals(deltaTime);
             applyRoadWrapAndBounds();
             matatuCulture.checkTrafficViolation();
             if (gameState.role === CONDUCTOR && gameState.autopilotInterval) {
@@ -399,6 +489,8 @@ function animate() {
             if (trafficManager) trafficManager.update(deltaTime, matatuMesh, gameState.speed);
             checkCollision();
         }
+
+        playHorn(gameState.hornActive);
 
         setTrafficLightState(gameState.trafficLightState);
         updateCamera();
@@ -420,9 +512,18 @@ function animate() {
 window.onload = function() {
     document.addEventListener('keydown', (e) => {
         keyState[e.key] = true;
+        if (e.key === ' ' || e.key === 'Space') e.preventDefault();
         if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') startRoute();
+        // Phase 1 vehicle controls
+        if (e.key === 'q' || e.key === 'Q') gameState.indicatorLeft = !gameState.indicatorLeft;
+        if (e.key === 'e' || e.key === 'E') gameState.indicatorRight = !gameState.indicatorRight;
+        if (e.key === 'l' || e.key === 'L') gameState.headlightsOn = !gameState.headlightsOn;
+        if (e.key === 'h' || e.key === 'H') gameState.hornActive = true;
     });
-    document.addEventListener('keyup', (e) => { keyState[e.key] = false; });
+    document.addEventListener('keyup', (e) => {
+        keyState[e.key] = false;
+        if (e.key === 'h' || e.key === 'H') gameState.hornActive = false;
+    });
 
     try {
         initScene();

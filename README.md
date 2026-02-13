@@ -18,7 +18,7 @@ Then open `http://localhost:3000` (or the port from the command).
 
 ## How to play
 
-- **Driver:** **W** / ↑ accelerate, **S** / ↓ brake, **A** / **D** turn. Stay on the road and obey the traffic light at the intersection.
+- **Driver:** **W** / ↑ accelerate, **S** / ↓ brake, **A** / **D** turn. **Space** handbrake. **Q** / **E** indicators, **L** headlights, **H** horn. Stay on the road and obey the traffic light.
 - **Conductor:** Click **Switch Role**. Autopilot drives along the road. At **green rings** (bus stops), use **Pick up** or **Drop off** to earn fares.
 - **Today’s target:** Earn KSh 5,000. Out of fuel and out of cash? Use **Start new day** to reset.
 - The **road loops** — drive past one end to reappear at the other. Refuel when needed (KSh 500).
