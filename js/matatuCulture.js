@@ -1,6 +1,8 @@
 import { DRIVER } from './game.js';
 import { isInIntersection } from './roads.js';
 
+// GTA-style: we never force the player to slow or stop for red. Full freedom.
+// Running the red only risks a police encounter (fine/bribe) when in intersection.
 const TRAFFIC_LIGHT_CYCLE = 12000;
 const VIOLATION_CHANCE = 0.45;
 const BASE_FINE = 200;

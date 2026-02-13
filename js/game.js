@@ -2,7 +2,7 @@
 import { UIManager } from './uiManager.js';
 import { Physics } from './physics.js?v=4';
 import { MatatuCulture } from './matatuCulture.js';
-import { createRoads, GROUND_LEVEL as ROAD_GROUND, wrapZ, getRoadBounds, ROAD_HALF } from './roads.js';
+import { createRoads, GROUND_LEVEL as ROAD_GROUND, wrapZ, getRoadBounds, ROAD_HALF, shortestDeltaZ } from './roads.js';
 import { TrafficManager } from './traffic.js';
 import { createBusStopMeshes } from './busStops.js';
 // Note: ConductorRole imported later to break circular dependency
@@ -41,6 +41,7 @@ export const gameState = {
 
     goalReached: false,
     goalCash: GOAL_CASH,
+    atFuelStation: false,
 
     // Phase 1 — vehicle systems
     handbrake: false,
@@ -191,6 +192,27 @@ function createEnvironment() {
     const stops = createBusStopMeshes(scene);
     busStops.length = 0;
     busStops.push(...stops);
+    createFuelStations(scene);
+}
+
+const FUEL_STATION_POSITIONS = [{ z: -250 }, { z: 280 }];
+const FUEL_STATION_RADIUS = 22;
+
+function createFuelStations(scene) {
+    const pumpGeo = new THREE.CylinderGeometry(0.4, 0.5, 2.2, 12);
+    const pumpMat = new THREE.MeshLambertMaterial({ color: 0xdc2626 });
+    FUEL_STATION_POSITIONS.forEach(({ z }) => {
+        const group = new THREE.Group();
+        const pump = new THREE.Mesh(pumpGeo, pumpMat.clone());
+        pump.position.y = 1.1;
+        group.add(pump);
+        const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8), new THREE.MeshLambertMaterial({ color: 0x171717 }));
+        nozzle.rotation.z = Math.PI / 2;
+        nozzle.position.set(0.5, 0.8, 0);
+        group.add(nozzle);
+        group.position.set(getRoadBounds().xMax - 4, GROUND_LEVEL, z);
+        scene.add(group);
+    });
 }
 
 // FIX: Initialize Three.js objects first.
@@ -389,6 +411,16 @@ function updateCamera() {
     camera.lookAt(look);
 }
 
+function updateFuelStationProximity() {
+    const pos = matatuMesh.position;
+    let near = false;
+    for (const st of FUEL_STATION_POSITIONS) {
+        const dz = Math.abs(shortestDeltaZ(pos.z, st.z));
+        if (dz < FUEL_STATION_RADIUS) { near = true; break; }
+    }
+    gameState.atFuelStation = near;
+}
+
 function applyRoadWrapAndBounds() {
     const pos = matatuMesh.position;
     const margin = 30;
@@ -482,6 +514,7 @@ function animate() {
             physics.driveUpdate(gameState.role, deltaTime);
             updateVehicleVisuals(deltaTime);
             applyRoadWrapAndBounds();
+            updateFuelStationProximity();
             matatuCulture.checkTrafficViolation();
             if (gameState.role === CONDUCTOR && gameState.autopilotInterval) {
                 conductorRole.autopilotDrive(gameState.speed, deltaTime);

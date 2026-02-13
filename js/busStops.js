@@ -3,6 +3,7 @@
  */
 import { ROAD_WIDTH, GROUND_LEVEL } from './roads.js';
 
+// waitingPassengers is set when stop becomes a destination or on first visit (Phase 2).
 export const BUS_STOPS = [
     { name: 'CBD', baseFare: 150, z: 80, id: 'cbd' },
     { name: 'Kibera', baseFare: 100, z: -60, id: 'kibera' },
@@ -59,7 +60,8 @@ export function createBusStopMeshes(scene) {
 
         group.position.set(PULL_OVER_X + 2.5, GROUND_LEVEL, stop.z);
         scene.add(group);
-        stops.push({ ...stop, mesh: group, position: { x: PULL_OVER_X, z: stop.z } });
+        const stopData = { ...stop, mesh: group, position: { x: PULL_OVER_X, z: stop.z }, waitingPassengers: 0 };
+        stops.push(stopData);
     });
 
     return stops;

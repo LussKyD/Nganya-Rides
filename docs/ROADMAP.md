@@ -30,17 +30,17 @@ From prototype skeleton to full-fledged bus simulator. Phased, actionable.
 
 ### Passenger system
 
-- [ ] Bus stops with **waiting passengers** (count or simple sprites).
-- [ ] **Boarding animation** / timing (door open, delay, capacity check).
-- [ ] **Fare collection** — Per passenger or per trip; link to distance/comfort later.
-- [ ] **Max capacity** — Block boarding when full; show in UI.
-- [ ] **Mood system** — Angry if late; affects tips or penalties (formula later).
-- [ ] **Revenue** = f(passengers, distance, comfort).
+- [x] Bus stops with **waiting passengers** (count per stop; set when destination chosen).
+- [ ] **Boarding animation** / timing (door open, delay) — optional polish.
+- [x] **Fare collection** — Per passenger (farePerPax from baseFare); drop-off total fare.
+- [x] **Max capacity** — Block boarding when full; "No passengers waiting" when 0.
+- [x] **Mood system** — Simple: 15% tip, 10% grumble penalty on drop-off.
+- [x] **Revenue** — Boarding fares + drop-off total; distance/comfort later.
 
 ### Traffic & AI
 
-- [ ] **AI cars** — Already started in `traffic.js`; refine lane follow, lights, wrap.
-- [ ] **Traffic lights** that actually control traffic (NPCs stop on red).
+- [x] **AI cars** — Lane follow, lights, wrap in `traffic.js`.
+- [x] **Traffic lights** — NPCs stop on red; player has full freedom (GTA-style), police risk only.
 - [ ] **Random traffic events** — Breakdowns, jams, diversions (lightweight).
 - [ ] **Police fines** — Already in `matatuCulture.js`; extend for violations.
 - [ ] **Speed limits** — Per zone or road; display and enforce.
@@ -48,7 +48,7 @@ From prototype skeleton to full-fledged bus simulator. Phased, actionable.
 
 ### Fuel & economy
 
-- [ ] **Fuel stations** — Locations; refuel only there (or pay premium elsewhere).
+- [x] **Fuel stations** — Two stations (visual pumps + atFuelStation); refuel anywhere for now.
 - [ ] **Fuel cost** — Variable price; show on HUD when at station.
 - [ ] **Maintenance cost** — Periodic; deduct from cash.
 - [ ] **Breakdowns** — Random chance or wear-based; stop until repaired.

@@ -34,6 +34,8 @@ export class ConductorRole {
         const choices = this.busStops.filter(s => s.name !== currentName);
         if (!choices.length) return;
         const next = choices[Math.floor(Math.random() * choices.length)];
+        if (next.waitingPassengers === undefined || next.waitingPassengers === 0)
+            next.waitingPassengers = Math.floor(2 + Math.random() * 5);
         this.gameState.currentDestination = next;
         this.createDestinationMarker(next);
     }
@@ -67,22 +69,35 @@ export class ConductorRole {
         if (this.gameState.role !== CONDUCTOR) return;
 
         if (actionType === 'pick_up' && this.gameState.currentStop === 'pick_up') {
-            const passengersGained = Math.min(Math.floor(Math.random() * 5) + 3, this.gameState.maxPassengers - this.gameState.passengers);
-            if (passengersGained > 0) {
-                this.gameState.passengers += passengersGained;
-                const fare = passengersGained * 50;
-                this.uiManager.showGameMessage(`Wacha tupande! Picked up ${passengersGained} passengers. KSh ${fare}.`, 2000);
+            const dest = this.gameState.currentDestination;
+            const waiting = (dest && dest.waitingPassengers) ? dest.waitingPassengers : 0;
+            const space = this.gameState.maxPassengers - this.gameState.passengers;
+            const board = Math.min(waiting, space);
+            if (board > 0) {
+                this.gameState.passengers += board;
+                dest.waitingPassengers = Math.max(0, (dest.waitingPassengers || 0) - board);
+                const farePerPax = Math.max(30, Math.floor((dest.baseFare || 100) / 3));
+                const fare = board * farePerPax;
+                this.gameState.cash += fare;
+                this.uiManager.showGameMessage(`Wacha tupande! Picked up ${board} (${waiting} waiting). KSh ${fare}.`, 2000);
                 this.setNextDestination();
-            } else {
+            } else if (space === 0) {
                 this.uiManager.showGameMessage("Matatu is full! Get going!", 2000);
+            } else {
+                this.uiManager.showGameMessage("No passengers waiting here.", 2000);
             }
             this.gameState.currentStop = null;
             this.uiManager.updateConductorButtons(null);
         } else if (actionType === 'drop_off' && this.gameState.currentStop === 'drop_off') {
-            const totalFare = this.gameState.passengers * this.gameState.currentDestination.baseFare;
+            const dest = this.gameState.currentDestination;
+            const pax = this.gameState.passengers;
+            const totalFare = pax * (dest && dest.baseFare ? dest.baseFare : 80);
             this.gameState.cash += totalFare;
+            const mood = Math.random();
+            if (mood < 0.15) this.gameState.cash += 10; // tip
+            else if (mood > 0.9) this.gameState.cash -= 5; // grumble penalty
             this.gameState.passengers = 0;
-            this.uiManager.showGameMessage(`Tushukishe! Dropped off all passengers. KSh ${totalFare} total profit!`, 3000);
+            this.uiManager.showGameMessage(`Tushukishe! Dropped off ${pax}. KSh ${totalFare}.`, 3000);
             this.setNextDestination();
             this.gameState.currentStop = null;
             this.uiManager.updateConductorButtons(null);
